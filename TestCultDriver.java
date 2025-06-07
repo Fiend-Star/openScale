@@ -44,7 +44,7 @@ public class TestCultDriver {
         }
         
         // Pattern 2: Big-endian 16-bit, divide by 100
-        int rawWeight2 = (data[2] & 0xFF) | ((data[1] & 0xFF) << 8);
+        int rawWeight2 = ((data[1] & 0xFF) << 8) | (data[2] & 0xFF);
         weight = rawWeight2 / 100.0f;
         if (weight > 10 && weight < 300) {
             measurement.setWeight(weight);
