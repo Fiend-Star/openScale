@@ -132,8 +132,8 @@ public class MainPreferences extends PreferenceFragmentCompat {
     }
 
     private static void tintIcons(Preference preference, int color) {
-        if (preference instanceof PreferenceGroup) {
-            PreferenceGroup group = ((PreferenceGroup) preference);
+        if (preference instanceof PreferenceGroup preferenceGroup) {
+            PreferenceGroup group = preferenceGroup;
             for (int i = 0; i < group.getPreferenceCount(); i++) {
                 tintIcons(group.getPreference(i), color);
             }

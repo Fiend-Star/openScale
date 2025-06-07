@@ -79,24 +79,24 @@ public class DatabaseTest {
         // was the user successfully inserted
         assertEquals(1, userDao.getAll().size());
 
-        assertEquals("foo", userDao.getAll().get(0).getUserName());
+        assertEquals("foo", userDao.getAll().getFirst().getUserName());
 
         userDao.insert(user2);
         assertEquals(2, userDao.getAll().size());
 
-        assertEquals("foo", userDao.getAll().get(0).getUserName());
+        assertEquals("foo", userDao.getAll().getFirst().getUserName());
         assertEquals("bar", userDao.getAll().get(1).getUserName());
 
         // check if get(id) works
         List<ScaleUser> scaleUserList = userDao.getAll();
-        ScaleUser firstUser = scaleUserList.get(0);
+        ScaleUser firstUser = scaleUserList.getFirst();
         ScaleUser secondUser = scaleUserList.get(1);
         assertEquals(firstUser.getUserName(), userDao.get(firstUser.getId()).getUserName());
 
         // check delete method
         userDao.delete(firstUser);
         assertEquals(1, userDao.getAll().size());
-        assertEquals(secondUser.getUserName(), userDao.getAll().get(0).getUserName());
+        assertEquals(secondUser.getUserName(), userDao.getAll().getFirst().getUserName());
 
         // check update method
         secondUser.setUserName("foobar");
@@ -180,8 +180,8 @@ public class DatabaseTest {
         assertEquals(2, measurementDAO.getAll(user2).size());
 
         // check if sorted DESC by date correctly
-        assertEquals(30.0f, measurementDAO.getAll(user1).get(0).getWeight(), DELTA);
-        assertEquals(25.0f, measurementDAO.getAll(user2).get(0).getWeight(), DELTA);
+        assertEquals(30.0f, measurementDAO.getAll(user1).getFirst().getWeight(), DELTA);
+        assertEquals(25.0f, measurementDAO.getAll(user2).getFirst().getWeight(), DELTA);
 
         // don't allow insertion with the same date
         long id = measurementDAO.insert(measurement11);
@@ -199,11 +199,11 @@ public class DatabaseTest {
         // test getPrevious(id) method
         assertNull(measurementDAO.getPrevious(scaleMeasurementList.get(2).getId(), user1));
         assertEquals(scaleMeasurementList.get(2).getWeight(), measurementDAO.getPrevious(scaleMeasurementList.get(1).getId(), user1).getWeight(), DELTA);
-        assertEquals(scaleMeasurementList.get(1).getWeight(), measurementDAO.getPrevious(scaleMeasurementList.get(0).getId(), user1).getWeight(), DELTA);
+        assertEquals(scaleMeasurementList.get(1).getWeight(), measurementDAO.getPrevious(scaleMeasurementList.getFirst().getId(), user1).getWeight(), DELTA);
 
         // test getNext(id) method
-        assertNull(measurementDAO.getNext(scaleMeasurementList.get(0).getId(), user1));
-        assertEquals(scaleMeasurementList.get(0).getWeight(), measurementDAO.getNext(scaleMeasurementList.get(1).getId(), user1).getWeight(), DELTA);
+        assertNull(measurementDAO.getNext(scaleMeasurementList.getFirst().getId(), user1));
+        assertEquals(scaleMeasurementList.getFirst().getWeight(), measurementDAO.getNext(scaleMeasurementList.get(1).getId(), user1).getWeight(), DELTA);
         assertEquals(scaleMeasurementList.get(1).getWeight(), measurementDAO.getNext(scaleMeasurementList.get(2).getId(), user1).getWeight(), DELTA);
 
         // test getAllInRange method
@@ -219,14 +219,14 @@ public class DatabaseTest {
         assertEquals(2, measurementDAO.getAllInRange(new Date(0), new Date(1000), user2).size());
 
         // test update method
-        assertEquals(30.0f, measurementDAO.get(scaleMeasurementList.get(0).getId()).getWeight(), DELTA);
-        scaleMeasurementList.get(0).setWeight(42.0f);
-        measurementDAO.update(scaleMeasurementList.get(0));
-        assertEquals(42.0f, measurementDAO.get(scaleMeasurementList.get(0).getId()).getWeight(), DELTA);
+        assertEquals(30.0f, measurementDAO.get(scaleMeasurementList.getFirst().getId()).getWeight(), DELTA);
+        scaleMeasurementList.getFirst().setWeight(42.0f);
+        measurementDAO.update(scaleMeasurementList.getFirst());
+        assertEquals(42.0f, measurementDAO.get(scaleMeasurementList.getFirst().getId()).getWeight(), DELTA);
 
         // test delete method
         assertEquals(3, measurementDAO.getAll(user1).size());
-        measurementDAO.delete(scaleMeasurementList.get(0).getId());
+        measurementDAO.delete(scaleMeasurementList.getFirst().getId());
         assertEquals(2, measurementDAO.getAll(user1).size());
 
         // test delete all method

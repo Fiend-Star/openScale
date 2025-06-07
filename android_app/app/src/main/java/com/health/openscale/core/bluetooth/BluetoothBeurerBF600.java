@@ -61,7 +61,7 @@ public class BluetoothBeurerBF600 extends BluetoothStandardWeightProfile {
         Converters.ActivityLevel al = selectedUser.getActivityLevel();
         BluetoothBytesParser parser = new BluetoothBytesParser(new byte[]{0});
         parser.setIntValue(al.toInt() + 1, FORMAT_UINT8, 0);
-        Timber.d(String.format("setCurrentUserData Activity level: %d", al.toInt() + 1));
+        Timber.d("setCurrentUserData Activity level: %d".formatted(al.toInt() + 1));
         writeBytes(SERVICE_BEURER_CUSTOM_BF600,
                 CHARACTERISTIC_BEURER_BF600_ACTIVITY_LEVEL, parser.getValue());
     }
@@ -82,7 +82,7 @@ public class BluetoothBeurerBF600 extends BluetoothStandardWeightProfile {
     protected void requestMeasurement() {
         BluetoothBytesParser parser = new BluetoothBytesParser(new byte[]{0});
         parser.setIntValue(0x00, FORMAT_UINT8, 0);
-        Timber.d(String.format("requestMeasurement BEURER 0xFFF4 magic: 0x00"));
+        Timber.d("requestMeasurement BEURER 0xFFF4 magic: 0x00".formatted());
         writeBytes(SERVICE_BEURER_CUSTOM_BF600,
                 CHARACTERISTIC_BEURER_BF600_TAKE_MEASUREMENT, parser.getValue());
     }

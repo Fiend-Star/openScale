@@ -100,7 +100,7 @@ public class BluetoothOKOK2 extends BluetoothCommunication {
 
             StringBuilder sb = new StringBuilder(data.length * 3);
             for (byte b : data) {
-                sb.append(String.format("%02x ", b));
+                sb.append("%02x ".formatted(b));
             }
             Timber.d("manufacturerSpecificData: [VID=%04x] %s", vendorIndex, sb.toString());
 

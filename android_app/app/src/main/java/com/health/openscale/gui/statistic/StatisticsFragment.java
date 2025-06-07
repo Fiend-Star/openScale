@@ -239,11 +239,11 @@ public class StatisticsFragment extends Fragment {
             firstMeasurement = new ScaleMeasurement();
             lastMeasurement = new ScaleMeasurement();
         } else if (rangeScaleMeasurementList.size() == 1) {
-            firstMeasurement = rangeScaleMeasurementList.get(0);
-            lastMeasurement = rangeScaleMeasurementList.get(0);
+            firstMeasurement = rangeScaleMeasurementList.getFirst();
+            lastMeasurement = rangeScaleMeasurementList.getFirst();
         } else {
-            firstMeasurement = rangeScaleMeasurementList.get(rangeScaleMeasurementList.size() - 1);
-            lastMeasurement = rangeScaleMeasurementList.get(0);
+            firstMeasurement = rangeScaleMeasurementList.getLast();
+            lastMeasurement = rangeScaleMeasurementList.getFirst();
         }
 
         setDiffDateText(firstMeasurement.getDateTime(), lastMeasurement.getDateTime());
@@ -279,8 +279,8 @@ public class StatisticsFragment extends Fragment {
 
             }
         };
-        dateValidatorList.add(DateValidatorPointForward.from(scaleMeasurementList.get(scaleMeasurementList.size()-1).getDateTime().getTime()));
-        dateValidatorList.add(DateValidatorPointBackward.before(scaleMeasurementList.get(0).getDateTime().getTime()));
+        dateValidatorList.add(DateValidatorPointForward.from(scaleMeasurementList.getLast().getDateTime().getTime()));
+        dateValidatorList.add(DateValidatorPointBackward.before(scaleMeasurementList.getFirst().getDateTime().getTime()));
         dateValidatorList.add(selectedDateValidator);
 
         CalendarConstraints constraintsBuilderRange = new CalendarConstraints.Builder().setValidator(CompositeDateValidator.allOf(dateValidatorList)).build();

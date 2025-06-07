@@ -53,8 +53,7 @@ public class TimePreferenceDialog extends PreferenceDialogFragmentCompat {
         Long timeInMillis = null;
         DialogPreference preference = getPreference();
 
-        if (preference instanceof TimePreference) {
-            TimePreference timePreference = (TimePreference) preference;
+        if (preference instanceof TimePreference timePreference) {
             timeInMillis = timePreference.getTimeInMillis();
         }
 
@@ -88,8 +87,8 @@ public class TimePreferenceDialog extends PreferenceDialogFragmentCompat {
             long timeInMillis = calendar.getTimeInMillis();
 
             DialogPreference preference = getPreference();
-            if (preference instanceof TimePreference) {
-                TimePreference timePreference = ((TimePreference) preference);
+            if (preference instanceof TimePreference timePreference1) {
+                TimePreference timePreference = timePreference1;
                 if (timePreference.callChangeListener(timeInMillis)) {
                     timePreference.setTimeInMillis(timeInMillis);
                     timePreference.setSummary(DateFormat.getTimeFormat(getContext()).format(calendar.getTime()));

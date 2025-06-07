@@ -78,7 +78,7 @@ public class AboutPreferences extends PreferenceFragmentCompat {
                 case Log.VERBOSE:
                     return "Verbose";
             }
-            return String.format("Unknown (%d)", priority);
+            return "Unknown (%d)".formatted(priority);
         }
 
         @Override
@@ -91,8 +91,8 @@ public class AboutPreferences extends PreferenceFragmentCompat {
 
     private FileDebugTree getEnabledFileDebugTree() {
         for (Timber.Tree tree : Timber.forest()) {
-            if (tree instanceof FileDebugTree) {
-                return (FileDebugTree) tree;
+            if (tree instanceof FileDebugTree debugTree) {
+                return debugTree;
             }
         }
         return null;
@@ -114,7 +114,7 @@ public class AboutPreferences extends PreferenceFragmentCompat {
             public boolean onPreferenceClick(Preference preference) {
                 if (debugLog.isChecked()) {
                     DateFormat format = new SimpleDateFormat("yyyy-MM-dd_HH-mm");
-                    String fileName = String.format("openScale_%s.txt", format.format(new Date()));
+                    String fileName = "openScale_%s.txt".formatted(format.format(new Date()));
 
                     Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
                     intent.addCategory(Intent.CATEGORY_OPENABLE);

@@ -178,7 +178,7 @@ public class BluetoothQNScale extends BluetoothCommunication {
 
         int len = data.length;
         for (int i = 0; i < len; i++) {
-            sb.append(String.format("%02X ", new Object[]{Byte.valueOf(data[i])}));
+            sb.append("%02X ".formatted(new Object[]{Byte.valueOf(data[i])}));
 
         }
         Timber.d(sb.toString());

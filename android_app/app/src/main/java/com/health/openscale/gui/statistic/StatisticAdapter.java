@@ -62,19 +62,19 @@ class StatisticAdapter extends RecyclerView.Adapter<StatisticAdapter.ViewHolder>
             this.firstMeasurement = new ScaleMeasurement();
             this.lastMeasurement = new ScaleMeasurement();
         } else if (scaleMeasurementList.size() == 1) {
-            this.firstMeasurement = scaleMeasurementList.get(0);
-            this.lastMeasurement = scaleMeasurementList.get(0);
+            this.firstMeasurement = scaleMeasurementList.getFirst();
+            this.lastMeasurement = scaleMeasurementList.getFirst();
         } else {
-            this.firstMeasurement = scaleMeasurementList.get(scaleMeasurementList.size()-1);
-            this.lastMeasurement = scaleMeasurementList.get(0);
+            this.firstMeasurement = scaleMeasurementList.getLast();
+            this.lastMeasurement = scaleMeasurementList.getFirst();
         }
 
         List<MeasurementView> fullMeasurementViewList = MeasurementView.getMeasurementList(activity,  MeasurementView.DateTimeOrder.LAST);
         measurementViewList = new ArrayList<>();
 
         for (MeasurementView measurementView : fullMeasurementViewList) {
-            if (measurementView instanceof FloatMeasurementView && measurementView.isVisible()) {
-                measurementViewList.add((FloatMeasurementView)measurementView);
+            if (measurementView instanceof FloatMeasurementView view && measurementView.isVisible()) {
+                measurementViewList.add(view);
             }
         }
     }
