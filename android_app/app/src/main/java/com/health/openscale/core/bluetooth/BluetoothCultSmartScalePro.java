@@ -17,36 +17,76 @@
 package com.health.openscale.core.bluetooth;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 
 import com.health.openscale.R;
 import com.health.openscale.core.OpenScale;
 import com.health.openscale.core.datatypes.ScaleMeasurement;
 import com.health.openscale.core.datatypes.ScaleUser;
+import com.welie.blessed.BluetoothBytesParser;
 
 import java.util.Date;
 import java.util.UUID;
 
 import timber.log.Timber;
 
+import static com.welie.blessed.BluetoothBytesParser.FORMAT_UINT8;
+import static com.welie.blessed.BluetoothBytesParser.FORMAT_UINT16;
+import static com.welie.blessed.BluetoothBytesParser.FORMAT_UINT32;
+
 public class BluetoothCultSmartScalePro extends BluetoothCommunication {
     
-    // Standard services
-    private final UUID DEVICE_INFORMATION_SERVICE = UUID.fromString("0000180A-0000-1000-8000-00805F9B34FB");
-    private final UUID BATTERY_SERVICE = UUID.fromString("0000180F-0000-1000-8000-00805F9B34FB");
+    // Standard services using BluetoothGattUuid
+    private final UUID DEVICE_INFORMATION_SERVICE = BluetoothGattUuid.SERVICE_DEVICE_INFORMATION;
+    private final UUID BATTERY_SERVICE = BluetoothGattUuid.SERVICE_BATTERY_LEVEL;
     
     // Custom Cult Smart Scale Pro Service (using Bluetooth Base UUID pattern)
-    private final UUID CULT_SCALE_SERVICE = UUID.fromString("0000FFF0-0000-1000-8000-00805F9B34FB");
+    private final UUID CULT_SCALE_SERVICE = BluetoothGattUuid.fromShortCode(0xFFF0);
     
-    // Standard Characteristics
-    private final UUID MANUFACTURER_NAME_CHARACTERISTIC = UUID.fromString("00002A29-0000-1000-8000-00805F9B34FB");
-    private final UUID MODEL_NUMBER_CHARACTERISTIC = UUID.fromString("00002A24-0000-1000-8000-00805F9B34FB");
-    private final UUID FIRMWARE_REVISION_CHARACTERISTIC = UUID.fromString("00002A26-0000-1000-8000-00805F9B34FB");
-    private final UUID BATTERY_LEVEL_CHARACTERISTIC = UUID.fromString("00002A19-0000-1000-8000-00805F9B34FB");
+    // Standard Characteristics using BluetoothGattUuid
+    private final UUID MANUFACTURER_NAME_CHARACTERISTIC = BluetoothGattUuid.CHARACTERISTIC_MANUFACTURER_NAME_STRING;
+    private final UUID MODEL_NUMBER_CHARACTERISTIC = BluetoothGattUuid.CHARACTERISTIC_MODEL_NUMBER_STRING;
+    private final UUID FIRMWARE_REVISION_CHARACTERISTIC = BluetoothGattUuid.CHARACTERISTIC_FIRMWARE_REVISION_STRING;
+    private final UUID BATTERY_LEVEL_CHARACTERISTIC = BluetoothGattUuid.CHARACTERISTIC_BATTERY_LEVEL;
     
-    // Custom Characteristics for scale-specific functionality
-    private final UUID MEASUREMENT_CHARACTERISTIC_FFF1 = UUID.fromString("0000FFF1-0000-1000-8000-00805F9B34FB"); // Weight measurement data (WRITE, NOTIFY)
-    private final UUID CONTROL_CHARACTERISTIC_FFF2 = UUID.fromString("0000FFF2-0000-1000-8000-00805F9B34FB");     // Device control/config (WRITE_NO_RESPONSE, INDICATE)
-    private final UUID STATUS_CHARACTERISTIC_FFF4 = UUID.fromString("0000FFF4-0000-1000-8000-00805F9B34FB");      // Status monitoring (NOTIFY)
+    // Custom Characteristics for scale-specific functionality using standard format
+    private final UUID MEASUREMENT_CHARACTERISTIC_FFF1 = BluetoothGattUuid.fromShortCode(0xFFF1); // Weight measurement data (WRITE, NOTIFY)
+    private final UUID CONTROL_CHARACTERISTIC_FFF2 = BluetoothGattUuid.fromShortCode(0xFFF2);     // Device control/config (WRITE_NO_RESPONSE, INDICATE)
+    private final UUID STATUS_CHARACTERISTIC_FFF4 = BluetoothGattUuid.fromShortCode(0xFFF4);      // Status monitoring (NOTIFY)
+    
+    // Enum-based state machine following openScale best practices
+    private enum BLE_STEPS {
+        DEVICE_INFO(0),
+        BATTERY_STATUS(1), 
+        ENABLE_MEASUREMENT_NOTIFICATIONS(2),
+        ENABLE_CONTROL_INDICATIONS(3),
+        ENABLE_STATUS_NOTIFICATIONS(4),
+        CONFIGURE_USER_PROFILE(5),
+        START_MEASUREMENT(6);
+        
+        private final int stepNumber;
+        
+        BLE_STEPS(int stepNumber) {
+            this.stepNumber = stepNumber;
+        }
+        
+        public int getStepNumber() {
+            return stepNumber;
+        }
+        
+        public static BLE_STEPS fromStepNumber(int stepNumber) {
+            for (BLE_STEPS step : values()) {
+                if (step.stepNumber == stepNumber) {
+                    return step;
+                }
+            }
+            return null;
+        }
+    }
+    
+    // SharedPreferences keys for user management following openScale patterns
+    private static final String PREFS_KEY_USER_CONSENT = "cult_scale_user_consent";
+    private static final String PREFS_KEY_USER_INDEX = "cult_scale_user_index";
     
     // Connection and measurement state management
     private boolean measurementComplete = false;
@@ -56,6 +96,9 @@ public class BluetoothCultSmartScalePro extends BluetoothCommunication {
     private static final int MAX_RETRIES = 3;
     private static final long CONNECTION_TIMEOUT_MS = 30000; // 30 seconds
     private static final long MEASUREMENT_TIMEOUT_MS = 60000; // 60 seconds
+    
+    // Standard measurement merging following openScale patterns
+    private ScaleMeasurement previousMeasurement = null;
     
     // Device information storage
     private String deviceManufacturer = "";
@@ -101,6 +144,9 @@ public class BluetoothCultSmartScalePro extends BluetoothCommunication {
         deviceModel = "";
         firmwareVersion = "";
         batteryLevel = -1;
+        
+        // Reset measurement merging state following openScale patterns
+        previousMeasurement = null;
         
         // Set preferred weight unit based on user preferences
         ScaleUser selectedUser = OpenScale.getInstance().getSelectedScaleUser();
@@ -159,41 +205,40 @@ public class BluetoothCultSmartScalePro extends BluetoothCommunication {
             return false;
         }
         
-        switch (stepNr) {
-            case 0:
-                // Step 1: Read device information for compatibility verification
-                Timber.d("Step 0: Reading device information service");
+        BLE_STEPS step = BLE_STEPS.fromStepNumber(stepNr);
+        if (step == null) {
+            Timber.e("Invalid step number: %d", stepNr);
+            return false;
+        }
+        
+        switch (step) {
+            case DEVICE_INFO:
+                Timber.d("Step %s: Reading device information service", step.name());
                 resetDeviceState(); // Reset state at start of new connection
                 return readDeviceInformation();
                 
-            case 1:
-                // Step 2: Read battery status for power monitoring
-                Timber.d("Step 1: Reading battery status");
+            case BATTERY_STATUS:
+                Timber.d("Step %s: Reading battery status", step.name());
                 return readBatteryStatus();
                 
-            case 2:
-                // Step 3: Enable notifications on FFF1 (measurement data)
-                Timber.d("Step 2: Enabling notifications on measurement characteristic FFF1");
+            case ENABLE_MEASUREMENT_NOTIFICATIONS:
+                Timber.d("Step %s: Enabling notifications on measurement characteristic FFF1", step.name());
                 return enableNotifications(MEASUREMENT_CHARACTERISTIC_FFF1);
                 
-            case 3:
-                // Step 4: Enable indications on FFF2 (control responses)
-                Timber.d("Step 3: Enabling indications on control characteristic FFF2");
+            case ENABLE_CONTROL_INDICATIONS:
+                Timber.d("Step %s: Enabling indications on control characteristic FFF2", step.name());
                 return enableIndications(CONTROL_CHARACTERISTIC_FFF2);
                 
-            case 4:
-                // Step 5: Enable notifications on FFF4 (status monitoring)
-                Timber.d("Step 4: Enabling notifications on status characteristic FFF4");
+            case ENABLE_STATUS_NOTIFICATIONS:
+                Timber.d("Step %s: Enabling notifications on status characteristic FFF4", step.name());
                 return enableNotifications(STATUS_CHARACTERISTIC_FFF4);
                 
-            case 5:
-                // Step 6: Send user profile configuration
-                Timber.d("Step 5: Sending user profile configuration");
+            case CONFIGURE_USER_PROFILE:
+                Timber.d("Step %s: Sending user profile configuration", step.name());
                 return sendUserProfile();
                 
-            case 6:
-                // Step 7: Start measurement session
-                Timber.d("Step 6: Starting measurement session");
+            case START_MEASUREMENT:
+                Timber.d("Step %s: Starting measurement session", step.name());
                 return startMeasurement();
                 
             default:
@@ -242,7 +287,9 @@ public class BluetoothCultSmartScalePro extends BluetoothCommunication {
         try {
             byte[] batteryData = readBytes(BATTERY_SERVICE, BATTERY_LEVEL_CHARACTERISTIC);
             if (batteryData != null && batteryData.length > 0) {
-                batteryLevel = batteryData[0] & 0xFF;
+                // Use BluetoothBytesParser for consistent data parsing
+                BluetoothBytesParser parser = new BluetoothBytesParser(batteryData);
+                batteryLevel = parser.getIntValue(FORMAT_UINT8, 0);
                 Timber.d("Battery level: %d%%", batteryLevel);
                 
                 if (batteryLevel < 20) {
@@ -285,35 +332,54 @@ public class BluetoothCultSmartScalePro extends BluetoothCommunication {
         try {
             ScaleUser selectedUser = OpenScale.getInstance().getSelectedScaleUser();
             
-            // Prepare user profile data with comprehensive configuration
-            byte[] userProfile = new byte[10];
-            userProfile[0] = (byte) 0xFE; // Start marker for user profile
-            userProfile[1] = (byte) selectedUser.getId(); // User ID
-            userProfile[2] = (byte) selectedUser.getAge(); // Age
+            // Use SharedPreferences for user management following openScale patterns
+            SharedPreferences prefs = context.getSharedPreferences("cult_scale_prefs", Context.MODE_PRIVATE);
+            int userId = selectedUser.getId();
+            int storedConsent = prefs.getInt(PREFS_KEY_USER_CONSENT + "_" + userId, -1);
+            int storedIndex = prefs.getInt(PREFS_KEY_USER_INDEX + "_" + userId, -1);
             
-            // Convert height to integer for bit operations
+            // Use BluetoothBytesParser for consistent data construction
+            BluetoothBytesParser parser = new BluetoothBytesParser();
+            
+            // Build user profile packet
+            parser.setIntValue(0xFE, FORMAT_UINT8); // Start marker
+            parser.setIntValue(userId, FORMAT_UINT8); // User ID
+            parser.setIntValue(selectedUser.getAge(), FORMAT_UINT8); // Age
+            
+            // Height as 16-bit value following openScale patterns
             int heightCm = (int) selectedUser.getBodyHeight();
-            userProfile[3] = (byte) (heightCm & 0xFF); // Height (low byte)
-            userProfile[4] = (byte) ((heightCm >> 8) & 0xFF); // Height (high byte)
-            userProfile[5] = (byte) (selectedUser.getGender().isMale() ? 1 : 0); // Gender (1=male, 0=female)
-            userProfile[6] = preferredWeightUnit.getValue(); // Measurement unit (use preferred unit)
-            userProfile[7] = (byte) 0x00; // Reserved
+            parser.setIntValue(heightCm, FORMAT_UINT16); // Height
+            
+            parser.setIntValue(selectedUser.getGender().isMale() ? 1 : 0, FORMAT_UINT8); // Gender
+            parser.setIntValue(preferredWeightUnit.getValue(), FORMAT_UINT8); // Unit
+            parser.setIntValue(0x00, FORMAT_UINT8); // Reserved
             
             // Calculate XOR checksum for data integrity
+            byte[] profileData = parser.getValue();
             byte checksum = 0;
-            for (int i = 0; i < 8; i++) {
-                checksum ^= userProfile[i];
+            for (int i = 0; i < profileData.length; i++) {
+                checksum ^= profileData[i];
             }
-            userProfile[8] = checksum;
-            userProfile[9] = (byte) 0xFF; // End marker
+            parser.setIntValue(checksum, FORMAT_UINT8); // Checksum
+            parser.setIntValue(0xFF, FORMAT_UINT8); // End marker
             
-            Timber.d("Sending user profile for %s: unit=%s, [%s]", 
-                    selectedUser.getUserName(), preferredWeightUnit.getSymbol(), byteInHex(userProfile));
+            byte[] userProfile = parser.getValue();
+            
+            Timber.d("Sending user profile for %s (stored consent: %d, index: %d): unit=%s, [%s]", 
+                    selectedUser.getUserName(), storedConsent, storedIndex, 
+                    preferredWeightUnit.getSymbol(), byteInHex(userProfile));
             
             boolean success = writeBytes(CONTROL_CHARACTERISTIC_FFF2, userProfile);
             if (success) {  
                 deviceConfigured = true;
-                Timber.d("User profile sent successfully");
+                
+                // Store user preferences following openScale patterns
+                prefs.edit()
+                    .putInt(PREFS_KEY_USER_CONSENT + "_" + userId, userId)
+                    .putInt(PREFS_KEY_USER_INDEX + "_" + userId, userId)
+                    .apply();
+                
+                Timber.d("User profile sent successfully and preferences stored");
             } else if (retryCount < MAX_RETRIES) {
                 retryCount++;
                 Timber.w("User profile send failed, retry %d/%d", retryCount, MAX_RETRIES);
@@ -485,71 +551,91 @@ public class BluetoothCultSmartScalePro extends BluetoothCommunication {
     }
 
     /**
-     * Parse weight data using multiple encoding patterns common in smart scales
-     * Tries different byte positions, endianness, and scaling factors
+     * Parse weight data using BluetoothBytesParser and multiple encoding patterns
+     * Follows openScale standard patterns for BLE scale data parsing
      */
     private void parseWeightData(byte[] data) {
         try {
+            BluetoothBytesParser parser = new BluetoothBytesParser(data);
             float weight = 0.0f;
             boolean weightFound = false;
             
-            // Try multiple parsing strategies common in BLE scales
+            // Try multiple parsing strategies using BluetoothBytesParser
             if (data.length >= 6) {
                 
                 // Strategy 1: Little-endian 16-bit at positions 3-4, scale by 100
                 if (!weightFound) {
-                    int weightRaw = (data[3] & 0xFF) | ((data[4] & 0xFF) << 8);
-                    weight = weightRaw / 100.0f;
-                    if (weight >= 10.0f && weight <= 300.0f) {
-                        weightFound = true;
-                        Timber.d("Weight found using strategy 1 (LE pos 3-4, /100): %.2f kg", weight);
+                    try {
+                        int weightRaw = parser.getIntValue(FORMAT_UINT16, 3);
+                        weight = weightRaw / 100.0f;
+                        if (weight >= 10.0f && weight <= 300.0f) {
+                            weightFound = true;
+                            Timber.d("Weight found using strategy 1 (LE pos 3-4, /100): %.2f kg", weight);
+                        }
+                    } catch (Exception e) {
+                        // Strategy failed, try next
                     }
                 }
                 
-                // Strategy 2: Big-endian 16-bit at positions 3-4, scale by 100  
+                // Strategy 2: Little-endian 16-bit at positions 2-3, scale by 100
                 if (!weightFound) {
-                    int weightRaw = ((data[3] & 0xFF) << 8) | (data[4] & 0xFF);
-                    weight = weightRaw / 100.0f;
-                    if (weight >= 10.0f && weight <= 300.0f) {
-                        weightFound = true;
-                        Timber.d("Weight found using strategy 2 (BE pos 3-4, /100): %.2f kg", weight);
+                    try {
+                        int weightRaw = parser.getIntValue(FORMAT_UINT16, 2);
+                        weight = weightRaw / 100.0f;
+                        if (weight >= 10.0f && weight <= 300.0f) {
+                            weightFound = true;
+                            Timber.d("Weight found using strategy 2 (LE pos 2-3, /100): %.2f kg", weight);
+                        }
+                    } catch (Exception e) {
+                        // Strategy failed, try next
                     }
                 }
                 
-                // Strategy 3: Little-endian 16-bit at positions 2-3, scale by 100
+                // Strategy 3: Little-endian 16-bit at positions 3-4, scale by 10
                 if (!weightFound) {
-                    int weightRaw = (data[2] & 0xFF) | ((data[3] & 0xFF) << 8);
-                    weight = weightRaw / 100.0f;
-                    if (weight >= 10.0f && weight <= 300.0f) {
-                        weightFound = true;
-                        Timber.d("Weight found using strategy 3 (LE pos 2-3, /100): %.2f kg", weight);
+                    try {
+                        int weightRaw = parser.getIntValue(FORMAT_UINT16, 3);
+                        weight = weightRaw / 10.0f;
+                        if (weight >= 10.0f && weight <= 300.0f) {
+                            weightFound = true;
+                            Timber.d("Weight found using strategy 3 (LE pos 3-4, /10): %.2f kg", weight);
+                        }
+                    } catch (Exception e) {
+                        // Strategy failed, try next
                     }
                 }
                 
-                // Strategy 4: Try scale factor of 10 instead of 100
-                if (!weightFound) {
-                    int weightRaw = (data[3] & 0xFF) | ((data[4] & 0xFF) << 8);
-                    weight = weightRaw / 10.0f;
-                    if (weight >= 10.0f && weight <= 300.0f) {
-                        weightFound = true;
-                        Timber.d("Weight found using strategy 4 (LE pos 3-4, /10): %.2f kg", weight);
-                    }
-                }
-                
-                // Strategy 5: Try positions 1-2 with scale factor 100
+                // Strategy 4: Little-endian 16-bit at positions 1-2, scale by 100
                 if (!weightFound && data.length >= 5) {
-                    int weightRaw = (data[1] & 0xFF) | ((data[2] & 0xFF) << 8);
-                    weight = weightRaw / 100.0f;
-                    if (weight >= 10.0f && weight <= 300.0f) {
-                        weightFound = true;
-                        Timber.d("Weight found using strategy 5 (LE pos 1-2, /100): %.2f kg", weight);
+                    try {
+                        int weightRaw = parser.getIntValue(FORMAT_UINT16, 1);
+                        weight = weightRaw / 100.0f;
+                        if (weight >= 10.0f && weight <= 300.0f) {
+                            weightFound = true;
+                            Timber.d("Weight found using strategy 4 (LE pos 1-2, /100): %.2f kg", weight);
+                        }
+                    } catch (Exception e) {
+                        // Strategy failed, try next
+                    }
+                }
+                
+                // Strategy 5: Try 32-bit value for high precision scales
+                if (!weightFound && data.length >= 8) {
+                    try {
+                        int weightRaw = parser.getIntValue(FORMAT_UINT32, 2);
+                        weight = weightRaw / 1000.0f;
+                        if (weight >= 10.0f && weight <= 300.0f) {
+                            weightFound = true;
+                            Timber.d("Weight found using strategy 5 (LE pos 2-5, /1000): %.2f kg", weight);
+                        }
+                    } catch (Exception e) {
+                        // Strategy failed
                     }
                 }
             }
 
             if (weightFound) {
                 ScaleMeasurement scaleMeasurement = new ScaleMeasurement();
-                // Weight is always parsed in kg, convert if needed for display
                 scaleMeasurement.setWeight(weight);
                 scaleMeasurement.setDateTime(new Date());
                 
@@ -558,20 +644,18 @@ public class BluetoothCultSmartScalePro extends BluetoothCommunication {
                 Timber.i("Successfully parsed weight: %.2f kg (%.2f %s) from data: [%s]", 
                         weight, displayWeight, preferredWeightUnit.getSymbol(), byteInHex(data));
                 
-                // Only add simple weight measurement if we haven't completed a full body composition measurement
-                if (!measurementComplete) {
-                    addScaleMeasurement(scaleMeasurement);
-                    measurementComplete = true;
-                    sendMessage(R.string.info_scale_ready, 0);
-                }
+                // Use standard measurement merging pattern
+                mergeWithPreviousScaleMeasurement(scaleMeasurement);
             } else {
                 Timber.w("Unable to extract valid weight from data: [%s]", byteInHex(data));
                 // Log all attempted values for debugging
                 for (int i = 0; i < Math.min(data.length - 1, 5); i++) {
-                    int raw1 = (data[i] & 0xFF) | ((data[i + 1] & 0xFF) << 8);
-                    int raw2 = ((data[i] & 0xFF) << 8) | (data[i + 1] & 0xFF);
-                    Timber.d("Position %d: LE=%d (%.2f/%.1f), BE=%d (%.2f/%.1f)", 
-                           i, raw1, raw1/100.0f, raw1/10.0f, raw2, raw2/100.0f, raw2/10.0f);
+                    try {
+                        int raw1 = parser.getIntValue(FORMAT_UINT16, i);
+                        Timber.d("Position %d: raw=%d (%.2f/%.1f)", i, raw1, raw1/100.0f, raw1/10.0f);
+                    } catch (Exception e) {
+                        // Position not available
+                    }
                 }
             }
         } catch (Exception e) {
@@ -580,11 +664,12 @@ public class BluetoothCultSmartScalePro extends BluetoothCommunication {
     }
 
     /**
-     * Parse comprehensive body composition data from status notifications
+     * Parse comprehensive body composition data using BluetoothBytesParser
      * Extracts weight, body fat, water, muscle, bone mass, and visceral fat
      */
     private void parseBodyCompositionData(byte[] data) {
         try {
+            BluetoothBytesParser parser = new BluetoothBytesParser(data);
             ScaleMeasurement scaleMeasurement = new ScaleMeasurement();
             boolean hasValidWeight = false;
             int validMetrics = 0;
@@ -592,79 +677,74 @@ public class BluetoothCultSmartScalePro extends BluetoothCommunication {
             Timber.d("Parsing body composition data (%d bytes): [%s]", data.length, byteInHex(data));
             
             if (data.length >= 20) {
-                // Extract weight using multiple strategies
+                // Extract weight using multiple strategies with BluetoothBytesParser
                 float weight = 0.0f;
                 
                 // Try different weight positions common in body composition packets
                 int[] weightPositions = {2, 4, 6, 8}; // Common positions for weight data
                 for (int pos : weightPositions) {
                     if (pos + 1 < data.length && !hasValidWeight) {
-                        // Little-endian
-                        int weightRaw = (data[pos] & 0xFF) | ((data[pos + 1] & 0xFF) << 8);
-                        weight = weightRaw / 100.0f;
-                        
-                        if (weight >= 10.0f && weight <= 300.0f) {
-                            scaleMeasurement.setWeight(weight);
-                            hasValidWeight = true;
-                            Timber.d("Extracted weight: %.2f kg (position %d, LE)", weight, pos);
-                            break;
-                        }
-                        
-                        // Big-endian if little-endian failed
-                        weightRaw = ((data[pos] & 0xFF) << 8) | (data[pos + 1] & 0xFF);
-                        weight = weightRaw / 100.0f;
-                        
-                        if (weight >= 10.0f && weight <= 300.0f) {
-                            scaleMeasurement.setWeight(weight);
-                            hasValidWeight = true;
-                            Timber.d("Extracted weight: %.2f kg (position %d, BE)", weight, pos);
-                            break;
+                        try {
+                            int weightRaw = parser.getIntValue(FORMAT_UINT16, pos);
+                            weight = weightRaw / 100.0f;
+                            
+                            if (weight >= 10.0f && weight <= 300.0f) {
+                                scaleMeasurement.setWeight(weight);
+                                hasValidWeight = true;
+                                Timber.d("Extracted weight: %.2f kg (position %d)", weight, pos);
+                                break;
+                            }
+                        } catch (Exception e) {
+                            // Position not available or invalid, try next
                         }
                     }
                 }
                 
                 if (hasValidWeight) {
-                    // Extract body composition metrics
-                    // Try different common layouts for body composition data
+                    // Extract body composition metrics using BluetoothBytesParser
                     
                     // Layout 1: Sequential 16-bit values after weight
                     int baseOffset = 6; // Start after weight data
                     if (baseOffset + 10 < data.length) {
-                        float fat = extractPercentageValue(data, baseOffset, baseOffset + 1);
-                        float water = extractPercentageValue(data, baseOffset + 2, baseOffset + 3);
-                        float muscle = extractPercentageValue(data, baseOffset + 4, baseOffset + 5);
-                        float bone = extractPercentageValue(data, baseOffset + 6, baseOffset + 7) / 10.0f;
-                        float visceral = extractPercentageValue(data, baseOffset + 8, baseOffset + 9) / 10.0f;
-                        
-                        // Validate and set metrics
-                        if (fat > 0.0f && fat <= 50.0f) {
-                            scaleMeasurement.setFat(fat);
-                            validMetrics++;
-                            Timber.d("Extracted fat: %.1f%% (layout 1)", fat);
-                        }
-                        
-                        if (water > 30.0f && water <= 80.0f) {
-                            scaleMeasurement.setWater(water);
-                            validMetrics++;
-                            Timber.d("Extracted water: %.1f%% (layout 1)", water);
-                        }
-                        
-                        if (muscle > 10.0f && muscle <= 70.0f) {
-                            scaleMeasurement.setMuscle(muscle);
-                            validMetrics++;
-                            Timber.d("Extracted muscle: %.1f%% (layout 1)", muscle);
-                        }
-                        
-                        if (bone > 0.5f && bone <= 8.0f) {
-                            scaleMeasurement.setBone(bone);
-                            validMetrics++;
-                            Timber.d("Extracted bone: %.2f kg (layout 1)", bone);
-                        }
-                        
-                        if (visceral > 0.0f && visceral <= 30.0f) {
-                            scaleMeasurement.setVisceralFat(visceral);
-                            validMetrics++;
-                            Timber.d("Extracted visceral fat: %.1f (layout 1)", visceral);
+                        try {
+                            float fat = extractPercentageValueWithParser(parser, baseOffset, baseOffset + 1);
+                            float water = extractPercentageValueWithParser(parser, baseOffset + 2, baseOffset + 3);
+                            float muscle = extractPercentageValueWithParser(parser, baseOffset + 4, baseOffset + 5);
+                            float bone = extractPercentageValueWithParser(parser, baseOffset + 6, baseOffset + 7) / 10.0f;
+                            float visceral = extractPercentageValueWithParser(parser, baseOffset + 8, baseOffset + 9) / 10.0f;
+                            
+                            // Validate and set metrics
+                            if (fat > 0.0f && fat <= 50.0f) {
+                                scaleMeasurement.setFat(fat);
+                                validMetrics++;
+                                Timber.d("Extracted fat: %.1f%% (layout 1)", fat);
+                            }
+                            
+                            if (water > 30.0f && water <= 80.0f) {
+                                scaleMeasurement.setWater(water);
+                                validMetrics++;
+                                Timber.d("Extracted water: %.1f%% (layout 1)", water);
+                            }
+                            
+                            if (muscle > 10.0f && muscle <= 70.0f) {
+                                scaleMeasurement.setMuscle(muscle);
+                                validMetrics++;
+                                Timber.d("Extracted muscle: %.1f%% (layout 1)", muscle);
+                            }
+                            
+                            if (bone > 0.5f && bone <= 8.0f) {
+                                scaleMeasurement.setBone(bone);
+                                validMetrics++;
+                                Timber.d("Extracted bone: %.2f kg (layout 1)", bone);
+                            }
+                            
+                            if (visceral > 0.0f && visceral <= 30.0f) {
+                                scaleMeasurement.setVisceralFat(visceral);
+                                validMetrics++;
+                                Timber.d("Extracted visceral fat: %.1f (layout 1)", visceral);
+                            }
+                        } catch (Exception e) {
+                            Timber.d("Layout 1 parsing failed, trying alternative layout");
                         }
                     }
                     
@@ -673,41 +753,45 @@ public class BluetoothCultSmartScalePro extends BluetoothCommunication {
                         Timber.d("Trying alternative body composition layout...");
                         validMetrics = 0; // Reset counter
                         
-                        // Layout 2: Different positioning, some metrics might be single bytes
-                        float fat2 = (data[10] & 0xFF) / 10.0f;
-                        float water2 = (data[12] & 0xFF) / 10.0f;
-                        float muscle2 = (data[14] & 0xFF) / 10.0f;
-                        float bone2 = (data[16] & 0xFF) / 100.0f;
-                        float visceral2 = (data[17] & 0xFF) / 10.0f;
-                        
-                        if (fat2 > 0.0f && fat2 <= 50.0f) {
-                            scaleMeasurement.setFat(fat2);
-                            validMetrics++;
-                            Timber.d("Extracted fat: %.1f%% (layout 2)", fat2);
-                        }
-                        
-                        if (water2 > 30.0f && water2 <= 80.0f) {
-                            scaleMeasurement.setWater(water2);
-                            validMetrics++;
-                            Timber.d("Extracted water: %.1f%% (layout 2)", water2);
-                        }
-                        
-                        if (muscle2 > 10.0f && muscle2 <= 70.0f) {
-                            scaleMeasurement.setMuscle(muscle2);
-                            validMetrics++;
-                            Timber.d("Extracted muscle: %.1f%% (layout 2)", muscle2);
-                        }
-                        
-                        if (bone2 > 0.5f && bone2 <= 8.0f) {
-                            scaleMeasurement.setBone(bone2);
-                            validMetrics++;
-                            Timber.d("Extracted bone: %.2f kg (layout 2)", bone2);
-                        }
-                        
-                        if (visceral2 > 0.0f && visceral2 <= 30.0f) {
-                            scaleMeasurement.setVisceralFat(visceral2);
-                            validMetrics++;
-                            Timber.d("Extracted visceral fat: %.1f (layout 2)", visceral2);
+                        try {
+                            // Layout 2: Different positioning, some metrics might be single bytes
+                            float fat2 = parser.getIntValue(FORMAT_UINT8, 10) / 10.0f;
+                            float water2 = parser.getIntValue(FORMAT_UINT8, 12) / 10.0f;
+                            float muscle2 = parser.getIntValue(FORMAT_UINT8, 14) / 10.0f;
+                            float bone2 = parser.getIntValue(FORMAT_UINT8, 16) / 100.0f;
+                            float visceral2 = parser.getIntValue(FORMAT_UINT8, 17) / 10.0f;
+                            
+                            if (fat2 > 0.0f && fat2 <= 50.0f) {
+                                scaleMeasurement.setFat(fat2);
+                                validMetrics++;
+                                Timber.d("Extracted fat: %.1f%% (layout 2)", fat2);
+                            }
+                            
+                            if (water2 > 30.0f && water2 <= 80.0f) {
+                                scaleMeasurement.setWater(water2);
+                                validMetrics++;
+                                Timber.d("Extracted water: %.1f%% (layout 2)", water2);
+                            }
+                            
+                            if (muscle2 > 10.0f && muscle2 <= 70.0f) {
+                                scaleMeasurement.setMuscle(muscle2);
+                                validMetrics++;
+                                Timber.d("Extracted muscle: %.1f%% (layout 2)", muscle2);
+                            }
+                            
+                            if (bone2 > 0.5f && bone2 <= 8.0f) {
+                                scaleMeasurement.setBone(bone2);
+                                validMetrics++;
+                                Timber.d("Extracted bone: %.2f kg (layout 2)", bone2);
+                            }
+                            
+                            if (visceral2 > 0.0f && visceral2 <= 30.0f) {
+                                scaleMeasurement.setVisceralFat(visceral2);
+                                validMetrics++;
+                                Timber.d("Extracted visceral fat: %.1f (layout 2)", visceral2);
+                            }
+                        } catch (Exception e) {
+                            Timber.d("Layout 2 parsing also failed");
                         }
                     }
                 }
@@ -720,9 +804,8 @@ public class BluetoothCultSmartScalePro extends BluetoothCommunication {
                 Timber.i("Successfully parsed body composition: weight=%.2f kg (%.2f %s), %d metrics", 
                         scaleMeasurement.getWeight(), displayWeight, preferredWeightUnit.getSymbol(), validMetrics);
                 
-                addScaleMeasurement(scaleMeasurement);
-                measurementComplete = true;
-                sendMessage(R.string.info_scale_ready, 0);
+                // Use standard measurement merging pattern
+                mergeWithPreviousScaleMeasurement(scaleMeasurement);
             } else if (hasValidWeight) {
                 // Save weight-only measurement if no body composition data is valid
                 scaleMeasurement.setDateTime(new Date());
@@ -730,9 +813,8 @@ public class BluetoothCultSmartScalePro extends BluetoothCommunication {
                 Timber.i("Parsed weight-only measurement: %.2f kg (%.2f %s)", 
                         scaleMeasurement.getWeight(), displayWeight, preferredWeightUnit.getSymbol());
                 
-                addScaleMeasurement(scaleMeasurement);
-                measurementComplete = true;
-                sendMessage(R.string.info_scale_ready, 0);
+                // Use standard measurement merging pattern
+                mergeWithPreviousScaleMeasurement(scaleMeasurement);
             } else {
                 Timber.w("No valid body composition data found in %d-byte packet: [%s]", 
                         data.length, byteInHex(data));
@@ -742,6 +824,31 @@ public class BluetoothCultSmartScalePro extends BluetoothCommunication {
         }
     }
     
+    /**
+     * Extract percentage value using BluetoothBytesParser for consistent parsing
+     */
+    private float extractPercentageValueWithParser(BluetoothBytesParser parser, int lowByte, int highByte) {
+        try {
+            // Use BluetoothBytesParser for consistent 16-bit parsing
+            int value = parser.getIntValue(FORMAT_UINT16, lowByte);
+            float result = value / 10.0f;
+            
+            // Validate result is within reasonable range
+            if (result > 0.0f && result <= 100.0f) {
+                return result;
+            }
+        } catch (Exception e) {
+            // Parser failed, could be out of bounds or invalid data
+        }
+        
+        return 0.0f;
+    }
+    
+    /**
+     * Legacy percentage extraction method - kept for compatibility
+     * @deprecated Use extractPercentageValueWithParser instead
+     */
+    @Deprecated
     private float extractPercentageValue(byte[] data, int lowByte, int highByte) {
         if (lowByte >= data.length || highByte >= data.length) {
             return 0.0f;
@@ -769,6 +876,13 @@ public class BluetoothCultSmartScalePro extends BluetoothCommunication {
     
     @Override
     public void onBluetoothDisconnect() {
+        // Handle any pending measurement following standard openScale pattern
+        if (previousMeasurement != null) {
+            Timber.d("Adding pending measurement on disconnect");
+            addScaleMeasurement(previousMeasurement);
+            previousMeasurement = null;
+        }
+        
         super.onBluetoothDisconnect();
         Timber.i("Disconnected from Cult Smart Scale Pro");
         
@@ -885,4 +999,63 @@ public class BluetoothCultSmartScalePro extends BluetoothCommunication {
     
     // Debug call counter as instance variable
     private int debugCallCount = 0;
+    
+    /**
+     * Merge measurement data following openScale standard patterns
+     * Handles the standard scale protocol where weight measurement comes first (with user info)
+     * followed by body composition data (without user info)
+     */
+    protected void mergeWithPreviousScaleMeasurement(ScaleMeasurement newMeasurement) {
+        if (previousMeasurement == null) {
+            if (newMeasurement.getUserId() == -1) {
+                // No user ID and no previous measurement - add directly
+                addScaleMeasurement(newMeasurement);
+            } else {
+                // Has user ID - store as previous measurement
+                previousMeasurement = newMeasurement;
+            }
+        } else {
+            if ((newMeasurement.getUserId() == -1) && (previousMeasurement.getUserId() != -1)) {
+                // New measurement has no user ID but previous does - merge them
+                previousMeasurement.merge(newMeasurement);
+                addScaleMeasurement(previousMeasurement);
+                previousMeasurement = null;
+            } else {
+                // Add the previous measurement first
+                addScaleMeasurement(previousMeasurement);
+                if (newMeasurement.getUserId() == -1) {
+                    // New measurement has no user ID - add it directly
+                    addScaleMeasurement(newMeasurement);
+                    previousMeasurement = null;
+                } else {
+                    // New measurement has user ID - store as previous
+                    previousMeasurement = newMeasurement;
+                }
+            }
+        }
+    }
+    
+    /**
+     * Enhanced error handling for state machine control
+     */
+    protected void stopMachineState() {
+        try {
+            super.stopMachineState();
+            Timber.d("Machine state stopped");
+        } catch (Exception e) {
+            Timber.e(e, "Error stopping machine state");
+        }
+    }
+    
+    /**
+     * Enhanced error handling for state machine control
+     */
+    protected void resumeMachineState() {
+        try {
+            super.resumeMachineState();
+            Timber.d("Machine state resumed");
+        } catch (Exception e) {
+            Timber.e(e, "Error resuming machine state");
+        }
+    }
 }
