@@ -413,7 +413,7 @@ public abstract class BluetoothCommunication {
 
         final StringBuilder stringBuilder = new StringBuilder(3 * data.length);
         for (byte byteChar : data) {
-            stringBuilder.append(String.format("%02X ", byteChar));
+            stringBuilder.append("%02X ".formatted(byteChar));
         }
 
         return stringBuilder.substring(0, stringBuilder.length() - 1);
@@ -499,7 +499,7 @@ public abstract class BluetoothCommunication {
 
         @Override
         public void onConnectedPeripheral(BluetoothPeripheral peripheral) {
-            Timber.d(String.format("connected to '%s'", peripheral.getName()));
+            Timber.d("connected to '%s'".formatted(peripheral.getName()));
             setBluetoothStatus(BT_STATUS.CONNECTION_ESTABLISHED);
             btPeripheral = peripheral;
             nextMachineStep();
@@ -508,7 +508,7 @@ public abstract class BluetoothCommunication {
 
         @Override
         public void onConnectionFailed(BluetoothPeripheral peripheral, HciStatus status) {
-            Timber.e(String.format("connection '%s' failed with status %d", peripheral.getName(), status.value));
+            Timber.e("connection '%s' failed with status %d".formatted(peripheral.getName(), status.value));
             setBluetoothStatus(BT_STATUS.CONNECTION_LOST);
 
             if (status.value == 8) {
@@ -518,12 +518,12 @@ public abstract class BluetoothCommunication {
 
         @Override
         public void onDisconnectedPeripheral(final BluetoothPeripheral peripheral, HciStatus status) {
-            Timber.d(String.format("disconnected '%s' with status %d", peripheral.getName(), status.value));
+            Timber.d("disconnected '%s' with status %d".formatted(peripheral.getName(), status.value));
         }
 
         @Override
         public void onDiscoveredPeripheral(BluetoothPeripheral peripheral, ScanResult scanResult) {
-            Timber.d(String.format("Found peripheral '%s'", peripheral.getName()));
+            Timber.d("Found peripheral '%s'".formatted(peripheral.getName()));
             central.stopScan();
             connectToDevice(peripheral);
         }

@@ -43,12 +43,12 @@ public class BluetoothPreferences extends PreferenceFragmentCompat {
 
     private static final String formatDeviceName(String name, String address) {
         if (TextUtils.isEmpty(name) && !address.isEmpty()) {
-            return String.format("[%s]", address);
+            return "[%s]".formatted(address);
         }
         if (name.isEmpty() || address.isEmpty()) {
             return "-";
         }
-        return String.format("%s [%s]", name, address);
+        return "%s [%s]".formatted(name, address);
     }
 
     private String getCurrentDeviceName() {

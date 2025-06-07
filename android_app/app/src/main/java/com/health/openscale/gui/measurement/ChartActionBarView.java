@@ -86,8 +86,7 @@ public class ChartActionBarView extends HorizontalScrollView {
         actionBarView.removeAllViews();
 
         for (MeasurementView view : measurementViews) {
-            if (view instanceof FloatMeasurementView) {
-                final FloatMeasurementView measurementView = (FloatMeasurementView) view;
+            if (view instanceof FloatMeasurementView measurementView) {
 
                 if (measurementView.isVisible()) {
                     addActionButton(measurementView);

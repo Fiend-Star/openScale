@@ -24,7 +24,7 @@ public class BluetoothGattUuid {
     private static final String STANDARD_SUFFIX = "-0000-1000-8000-00805f9b34fb";
 
     public static final UUID fromShortCode(long code) {
-        return UUID.fromString(String.format("%08x%s", code, STANDARD_SUFFIX));
+        return UUID.fromString("%08x%s".formatted(code, STANDARD_SUFFIX));
     }
 
     public static final String prettyPrint(UUID uuid) {
@@ -47,8 +47,8 @@ public class BluetoothGattUuid {
                 if (uuid.equals(field.get(null))) {
                     String name = field.getName();
                     name = name.substring(name.indexOf('_') + 1);
-                    str = String.format("%s \"%s\"", str,
-                            name.replace('_', ' ').toLowerCase(Locale.US));
+                    str = "%s \"%s\"".formatted(str,
+                        name.replace('_', ' ').toLowerCase(Locale.US));
                     break;
                 }
             }

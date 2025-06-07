@@ -44,11 +44,11 @@ public class WidgetProvider extends AppWidgetProvider {
     List<MeasurementView> measurementViews;
 
     public static final String getUserIdPreferenceName(int appWidgetId) {
-        return String.format("widget_%d_userid", appWidgetId);
+        return "widget_%d_userid".formatted(appWidgetId);
     }
 
     public static final String getMeasurementPreferenceName(int appWidgetId) {
-        return String.format("widget_%d_measurement", appWidgetId);
+        return "widget_%d_measurement".formatted(appWidgetId);
     }
 
     private void updateWidget(Context context, AppWidgetManager appWidgetManager,
@@ -70,7 +70,7 @@ public class WidgetProvider extends AppWidgetProvider {
                     context, MeasurementView.DateTimeOrder.NONE);
         }
 
-        MeasurementView measurementView = measurementViews.get(0);
+        MeasurementView measurementView = measurementViews.getFirst();
         for (MeasurementView view : measurementViews) {
             if (view.getKey().equals(key)) {
                 measurementView = view;

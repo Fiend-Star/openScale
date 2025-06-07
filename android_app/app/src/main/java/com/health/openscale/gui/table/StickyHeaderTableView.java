@@ -505,8 +505,7 @@ public class StickyHeaderTableView extends View implements NestedScrollingChild 
                 if (i == 0 && j == 0) {
 //                    data[0][0] = "xx";
 
-                    if (data[i][j] instanceof String) {
-                        String str = (String)data[i][j];
+                    if (data[i][j] instanceof String str) {
                         paintHeaderText.getTextBounds(str, 0, str.length(), textRectBounds);
                     } else if (data[i][j] instanceof Drawable) {
                         Drawable icon = (Drawable) data[i][j];
@@ -529,8 +528,7 @@ public class StickyHeaderTableView extends View implements NestedScrollingChild 
                 } else if (i == 0) {
                     // Top headers cells
 
-                    if (data[i][j] instanceof String) {
-                        String str = (String)data[i][j];
+                    if (data[i][j] instanceof String str) {
                         paintHeaderText.getTextBounds(str, 0, str.length(), textRectBounds);
                     } else if (data[i][j] instanceof Drawable) {
                         Drawable icon = (Drawable) data[i][j];
@@ -551,8 +549,7 @@ public class StickyHeaderTableView extends View implements NestedScrollingChild 
                     }
                 } else if (j == 0) {
                     // Left headers cells
-                    if (data[i][j] instanceof String) {
-                        String str = (String)data[i][j];
+                    if (data[i][j] instanceof String str) {
                         if (str.indexOf("\n") != -1) {
                             String[] split = str.split("\n");
 
@@ -602,8 +599,7 @@ public class StickyHeaderTableView extends View implements NestedScrollingChild 
                     }
                 } else {
                     // Other content cells
-                    if (data[i][j] instanceof String) {
-                        String str = (String)data[i][j];
+                    if (data[i][j] instanceof String str) {
 
                         if (str.indexOf("\n") != -1) {
                             String[] split = str.split("\n");
@@ -808,8 +804,8 @@ public class StickyHeaderTableView extends View implements NestedScrollingChild 
                     canvas.drawRect(rectEachCellBoundData[0][j].left, rectEachCellBoundData[0][j].top, rectEachCellBoundData[0][j].right, rectEachCellBoundData[0][j].bottom, paintStrokeRect);
                 }
 
-                if (data[0][j] instanceof String) {
-                    textToDraw = (String)data[0][j];
+                if (data[0][j] instanceof String string) {
+                    textToDraw = string;
                    // paintHeaderText.getTextBounds(textToDraw, 0, textToDraw.length(), textRectBounds);
 
                     drawTextX = rectEachCellBoundData[0][j].right - (getWidthOfColumn(j) / 2f) - (textRectBounds.width() / 2f);
@@ -844,8 +840,8 @@ public class StickyHeaderTableView extends View implements NestedScrollingChild 
             canvas.drawRect(rectEachCellBoundData[0][0].left, rectEachCellBoundData[0][0].top, rectEachCellBoundData[0][0].right, rectEachCellBoundData[0][0].bottom, paintStrokeRect);
         }
 
-        if (data[0][0] instanceof String) {
-            textToDraw = (String)data[0][0];
+        if (data[0][0] instanceof String string) {
+            textToDraw = string;
 
            // paintHeaderText.getTextBounds(textToDraw, 0, textToDraw.length(), textRectBounds);
 

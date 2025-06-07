@@ -86,7 +86,7 @@ public class CsvHelperTest {
                 new BufferedReader(new StringReader(data)));
 
         assertEquals(1, list.size());
-        validateEntry(list.get(0), 5);
+        validateEntry(list.getFirst(), 5);
     }
 
     @Test
@@ -98,7 +98,7 @@ public class CsvHelperTest {
                 new BufferedReader(new StringReader(data)));
 
         assertEquals(1, list.size());
-        validateEntry(list.get(0), 5);
+        validateEntry(list.getFirst(), 5);
     }
 
     @Test
@@ -144,7 +144,7 @@ public class CsvHelperTest {
                 new BufferedReader(new StringReader(data)));
 
         assertEquals(1, list.size());
-        validateEntry(list.get(0), 4);
+        validateEntry(list.getFirst(), 4);
     }
 
     @Test
@@ -156,7 +156,7 @@ public class CsvHelperTest {
                 new BufferedReader(new StringReader(data)));
 
         assertEquals(1, list.size());
-        validateEntry(list.get(0), 3);
+        validateEntry(list.getFirst(), 3);
     }
 
     @Test
@@ -168,7 +168,7 @@ public class CsvHelperTest {
                 new BufferedReader(new StringReader(data)));
 
         assertEquals(1, list.size());
-        validateEntry(list.get(0), 2);
+        validateEntry(list.getFirst(), 2);
     }
 
     @Test
@@ -180,7 +180,7 @@ public class CsvHelperTest {
                 new BufferedReader(new StringReader(data)));
 
         assertEquals(1, list.size());
-        validateEntry(list.get(0), 1);
+        validateEntry(list.getFirst(), 1);
     }
 
     @Test
@@ -192,7 +192,7 @@ public class CsvHelperTest {
                 new BufferedReader(new StringReader(data)));
 
         assertEquals(1, list.size());
-        validateEntry(list.get(0), 0);
+        validateEntry(list.getFirst(), 0);
     }
 
     @Test(expected = ParseException.class)

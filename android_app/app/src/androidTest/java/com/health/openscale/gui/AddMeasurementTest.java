@@ -161,7 +161,7 @@ public class AddMeasurementTest {
         List<ScaleMeasurement> scaleMeasurementList = openScale.getScaleMeasurementList();
         assertEquals(1, scaleMeasurementList.size());
 
-        TestData.compareMeasurements(measurement, scaleMeasurementList.get(0));
+        TestData.compareMeasurements(measurement, scaleMeasurementList.getFirst());
     }
 
     @Test
@@ -207,7 +207,7 @@ public class AddMeasurementTest {
         List<ScaleMeasurement> scaleMeasurementList = openScale.getScaleMeasurementList();
         assertEquals(1, scaleMeasurementList.size());
 
-        TestData.compareMeasurements(measurement, scaleMeasurementList.get(0));
+        TestData.compareMeasurements(measurement, scaleMeasurementList.getFirst());
     }
 
     private void setMeasuremntField(String className, float value) {

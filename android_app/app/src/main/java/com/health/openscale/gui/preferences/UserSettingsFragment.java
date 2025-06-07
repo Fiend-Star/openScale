@@ -409,7 +409,7 @@ public class UserSettingsFragment extends Fragment {
 
                     int lastUserId = -1;
                     if (!scaleUser.isEmpty()) {
-                        lastUserId = scaleUser.get(0).getId();
+                        lastUserId = scaleUser.getFirst().getId();
                     }
 
                     openScale.selectScaleUser(lastUserId);
