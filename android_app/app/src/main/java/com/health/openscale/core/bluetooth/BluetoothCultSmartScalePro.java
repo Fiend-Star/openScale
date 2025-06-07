@@ -84,6 +84,7 @@ public class BluetoothCultSmartScalePro extends BluetoothCommunication {
         }
     }
     
+    
     // SharedPreferences keys for user management following openScale patterns
     private static final String PREFS_KEY_USER_CONSENT = "cult_scale_user_consent";
     private static final String PREFS_KEY_USER_INDEX = "cult_scale_user_index";
