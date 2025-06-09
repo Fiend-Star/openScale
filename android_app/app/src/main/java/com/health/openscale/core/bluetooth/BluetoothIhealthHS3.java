@@ -224,7 +224,7 @@ public class BluetoothIhealthHS3 extends BluetoothCommunication {
 
 //            Timber.w("iHealthHS3 - ScaleMeasurement "+String.format("%02X",weightBytes[0])+String.format("%02X",weightBytes[1]));
 
-            String ws = String.format("%02X",weightBytes[0])+String.format("%02X",weightBytes[1]);
+            String ws = "%02X".formatted(weightBytes[0])+"%02X".formatted(weightBytes[1]);
             StringBuilder ws1 = new StringBuilder (ws);
             ws1.insert(ws.length()-1,".");
     

@@ -57,7 +57,7 @@ public class DatabaseMigrationTest {
         ContentValues users = new ContentValues();
         for (int i = 1; i < 4; ++i) {
             users.put("id", i);
-            users.put("username", String.format("test%d", i));
+            users.put("username", "test%d".formatted(i));
             users.put("bodyHeight", i * 50);
             users.put("scaleUnit", 0);
             users.put("gender", 0);
@@ -116,7 +116,7 @@ public class DatabaseMigrationTest {
         ContentValues users = new ContentValues();
         for (int i = 1; i < 4; ++i) {
             users.put("id", i);
-            users.put("username", String.format("test%d", i));
+            users.put("username", "test%d".formatted(i));
             users.put("birthday", i*100);
             users.put("bodyHeight", i * 50);
             users.put("scaleUnit", 0);
@@ -201,7 +201,7 @@ public class DatabaseMigrationTest {
         ContentValues users = new ContentValues();
         for (int i = 1; i < 4; ++i) {
             users.put("id", i);
-            users.put("username", String.format("test%d", i));
+            users.put("username", "test%d".formatted(i));
             users.put("birthday", i*100);
             users.put("bodyHeight", i * 50);
             users.put("scaleUnit", 0);

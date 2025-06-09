@@ -229,7 +229,7 @@ public abstract class BluetoothStandardWeightProfile extends BluetoothCommunicat
 
         if(characteristic.equals(BluetoothGattUuid.CHARACTERISTIC_CURRENT_TIME)) {
             Date currentTime = parser.getDateTime();
-            Timber.d(String.format("Received device time: %s", currentTime));
+            Timber.d("Received device time: %s".formatted(currentTime));
         }
         else if(characteristic.equals(BluetoothGattUuid.CHARACTERISTIC_WEIGHT_MEASUREMENT)) {
             handleWeightMeasurement(value);
@@ -239,30 +239,30 @@ public abstract class BluetoothStandardWeightProfile extends BluetoothCommunicat
         }
         else if(characteristic.equals(BluetoothGattUuid.CHARACTERISTIC_BATTERY_LEVEL)) {
             int batteryLevel = parser.getIntValue(FORMAT_UINT8);
-            Timber.d(String.format("Received battery level %d%%", batteryLevel));
+            Timber.d("Received battery level %d%%".formatted(batteryLevel));
             if (batteryLevel <= 10) {
                 sendMessage(R.string.info_scale_low_battery, batteryLevel);
             }
         }
         else if(characteristic.equals(BluetoothGattUuid.CHARACTERISTIC_MANUFACTURER_NAME_STRING)) {
             String manufacturer = parser.getStringValue(0);
-            Timber.d(String.format("Received manufacturer: %s", manufacturer));
+            Timber.d("Received manufacturer: %s".formatted(manufacturer));
         }
         else if(characteristic.equals(BluetoothGattUuid.CHARACTERISTIC_MODEL_NUMBER_STRING)) {
             String modelNumber = parser.getStringValue(0);
-            Timber.d(String.format("Received modelnumber: %s", modelNumber));
+            Timber.d("Received modelnumber: %s".formatted(modelNumber));
         }
         else if (characteristic.equals(BluetoothGattUuid.CHARACTERISTIC_USER_CONTROL_POINT)) {
             handleUserControlPointNotify(value);
         }
         else if (characteristic.equals(BluetoothGattUuid.CHARACTERISTIC_CHANGE_INCREMENT)) {
             int increment = parser.getIntValue(FORMAT_UINT32);
-            Timber.d(String.format("Notification from CHARACTERISTIC_CHANGE_INCREMENT, value: %s", increment));
+            Timber.d("Notification from CHARACTERISTIC_CHANGE_INCREMENT, value: %s".formatted(increment));
             resumeMachineState();
         }
         else {
-            Timber.d(String.format("Notification from unhandled characteristic: %s, value: [%s]",
-                    characteristic.toString(), byteInHex(value)));
+            Timber.d("Notification from unhandled characteristic: %s, value: [%s]".formatted(
+                characteristic.toString(), byteInHex(value)));
         }
     }
 
@@ -328,7 +328,7 @@ public abstract class BluetoothStandardWeightProfile extends BluetoothCommunicat
                 + (timestampPresent ? ", timestamp" : "")
                 + (userIDPresent ? ", userID" : "")
                 + (bmiAndHeightPresent ? ", bmiAndHeight" : "")
-                + "], " + String.format("reserved flags: 0x%02x ", flags & 0xf0));
+                + "], " + "reserved flags: 0x%02x ".formatted(flags & 0xf0));
 
         ScaleMeasurement scaleMeasurement = new ScaleMeasurement();
 
@@ -373,7 +373,7 @@ public abstract class BluetoothStandardWeightProfile extends BluetoothCommunicat
             Timber.d(prefix + "heightInMeters: " + heightInMeters);
         }
 
-        Timber.d(String.format("Got weight: %s", weightValue));
+        Timber.d("Got weight: %s".formatted(weightValue));
         return scaleMeasurement;
     }
 
@@ -415,7 +415,7 @@ public abstract class BluetoothStandardWeightProfile extends BluetoothCommunicat
                 + (weightPresent ? ", weight" : "")
                 + (heightPresent ? ", height" : "")
                 + (multiPacketMeasurement ? ", multiPacketMeasurement" : "")
-                + "], " + String.format("reserved flags: 0x%04x ", flags & 0xe000));
+                + "], " + "reserved flags: 0x%04x ".formatted(flags & 0xe000));
 
         ScaleMeasurement scaleMeasurement = new ScaleMeasurement();
 
@@ -521,7 +521,7 @@ public abstract class BluetoothStandardWeightProfile extends BluetoothCommunicat
             Timber.e(prefix + "multiPacketMeasurement not supported!");
         }
 
-        Timber.d(String.format("Got body composition: %s", byteInHex(value)));
+        Timber.d("Got body composition: %s".formatted(byteInHex(value)));
         return scaleMeasurement;
     }
 
@@ -585,7 +585,7 @@ public abstract class BluetoothStandardWeightProfile extends BluetoothCommunicat
         BluetoothBytesParser parser = new BluetoothBytesParser(new byte[]{0,0,0});
         parser.setIntValue(UDS_CP_REGISTER_NEW_USER, FORMAT_UINT8,0);
         parser.setIntValue(consentCode, FORMAT_UINT16,1);
-        Timber.d(String.format("registerUser consentCode: %d", consentCode));
+        Timber.d("registerUser consentCode: %d".formatted(consentCode));
         writeBytes(BluetoothGattUuid.SERVICE_USER_DATA, BluetoothGattUuid.CHARACTERISTIC_USER_CONTROL_POINT, parser.getValue());
     }
 
@@ -594,14 +594,14 @@ public abstract class BluetoothStandardWeightProfile extends BluetoothCommunicat
         parser.setIntValue(UDS_CP_CONSENT,FORMAT_UINT8,0);
         parser.setIntValue(userIndex, FORMAT_UINT8,1);
         parser.setIntValue(consentCode, FORMAT_UINT16,2);
-        Timber.d(String.format("setUser userIndex: %d, consentCode: %d", userIndex, consentCode));
+        Timber.d("setUser userIndex: %d, consentCode: %d".formatted(userIndex, consentCode));
         writeBytes(BluetoothGattUuid.SERVICE_USER_DATA, BluetoothGattUuid.CHARACTERISTIC_USER_CONTROL_POINT, parser.getValue());
     }
 
     protected synchronized void setUser(int userId) {
         int userIndex = getUserScaleIndex(userId);
         int consentCode = getUserScaleConsent(userId);
-        Timber.d(String.format("setting: userId %d, userIndex: %d, consent Code: %d ", userId, userIndex, consentCode));
+        Timber.d("setting: userId %d, userIndex: %d, consent Code: %d ".formatted(userId, userIndex, consentCode));
         setUser(userIndex, consentCode);
     }
 
@@ -627,7 +627,7 @@ public abstract class BluetoothStandardWeightProfile extends BluetoothCommunicat
     protected void writeBirthday() {
         BluetoothBytesParser parser = new BluetoothBytesParser();
         Calendar userBirthday = dateToCalender(this.selectedUser.getBirthday());
-        Timber.d(String.format("user Birthday: %tD", userBirthday));
+        Timber.d("user Birthday: %tD".formatted(userBirthday));
         parser.setDateTime(userBirthday);
         writeBytes(BluetoothGattUuid.SERVICE_USER_DATA, BluetoothGattUuid.CHARACTERISTIC_USER_DATE_OF_BIRTH,
                 Arrays.copyOfRange(parser.getValue(), 0, 4));
@@ -642,7 +642,7 @@ public abstract class BluetoothStandardWeightProfile extends BluetoothCommunicat
     protected void writeGender() {
         BluetoothBytesParser parser = new BluetoothBytesParser();
         int gender = this.selectedUser.getGender().toInt();
-        Timber.d(String.format("gender: %d", gender));
+        Timber.d("gender: %d".formatted(gender));
         parser.setIntValue(gender, FORMAT_UINT8);
         writeBytes(BluetoothGattUuid.SERVICE_USER_DATA, BluetoothGattUuid.CHARACTERISTIC_USER_GENDER,
                 parser.getValue());
@@ -651,7 +651,7 @@ public abstract class BluetoothStandardWeightProfile extends BluetoothCommunicat
     protected void writeHeight() {
         BluetoothBytesParser parser = new BluetoothBytesParser();
         int height = (int) this.selectedUser.getBodyHeight();
-        Timber.d(String.format("height: %d", height));
+        Timber.d("height: %d".formatted(height));
         parser.setIntValue(height, FORMAT_UINT16);
         writeBytes(BluetoothGattUuid.SERVICE_USER_DATA, BluetoothGattUuid.CHARACTERISTIC_USER_HEIGHT,
                 parser.getValue());
@@ -668,7 +668,7 @@ public abstract class BluetoothStandardWeightProfile extends BluetoothCommunicat
     protected void setChangeIncrement() {
         BluetoothBytesParser parser = new BluetoothBytesParser();
         int i = 1;
-        Timber.d(String.format("Setting Change increment to %s", i));
+        Timber.d("Setting Change increment to %s".formatted(i));
         parser.setIntValue(i, FORMAT_UINT32);
         writeBytes(BluetoothGattUuid.SERVICE_USER_DATA, BluetoothGattUuid.CHARACTERISTIC_CHANGE_INCREMENT,
                 parser.getValue());
@@ -748,7 +748,7 @@ public abstract class BluetoothStandardWeightProfile extends BluetoothCommunicat
     }
 
     protected void handleVendorSpecificUserList(byte[] value) {
-            Timber.d(String.format("Got user data: <%s>", byteInHex(value)));
+            Timber.d("Got user data: <%s>".formatted(byteInHex(value)));
             BluetoothBytesParser parser = new BluetoothBytesParser(value);
             int userListStatus = parser.getIntValue(FORMAT_UINT8);
             if (userListStatus == 2) {
@@ -826,7 +826,7 @@ public abstract class BluetoothStandardWeightProfile extends BluetoothCommunicat
         for (int i = 0; i < userList.size(); ++i) {
             ScaleUser u = userList.get(i);
             String name = u.getUserName();
-            choiceStrings[i] = (name.length() > 0 ? name : String.format("P%02d", u.getId()))
+            choiceStrings[i] = (name.length() > 0 ? name : "P%02d".formatted(u.getId()))
                     + " " + context.getString(u.getGender().isMale() ? R.string.label_male : R.string.label_female).toLowerCase()
                     + " " + context.getString(R.string.label_height).toLowerCase() + ":" + u.getBodyHeight()
                     + " " + context.getString(R.string.label_birthday).toLowerCase() + ":" + dateFormat.format(u.getBirthday())

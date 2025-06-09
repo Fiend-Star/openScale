@@ -127,7 +127,7 @@ public class BluetoothBroadcastScale extends BluetoothCommunication {
                 default:
                     StringBuilder sb = new StringBuilder();
                     for (byte b : buf) {
-                        sb.append(String.format("0x%02X ", b));
+                        sb.append("0x%02X ".formatted(b));
                     }
                     Timber.d("Unsupported packet type %x, xor key %x data: %s", buf[4], xor, sb.toString());
             }

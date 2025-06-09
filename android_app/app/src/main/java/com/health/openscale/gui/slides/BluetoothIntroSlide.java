@@ -88,7 +88,7 @@ public class BluetoothIntroSlide extends Fragment {
         if (name.isEmpty() || address.isEmpty()) {
             return "[" + getContext().getString(R.string.label_empty) + "]";
         }
-        return String.format("%s [%s]", name, address);
+        return "%s [%s]".formatted(name, address);
     }
 
     private String getCurrentDeviceName() {

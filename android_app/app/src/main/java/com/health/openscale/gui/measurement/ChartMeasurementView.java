@@ -377,8 +377,7 @@ public class ChartMeasurementView extends LineChart {
         lineDataSets = new ArrayList<>();
 
         for (MeasurementView view : measurementViews) {
-            if (view instanceof FloatMeasurementView && view.isVisible()) {
-                final FloatMeasurementView measurementView = (FloatMeasurementView) view;
+            if (view instanceof FloatMeasurementView measurementView && view.isVisible()) {
 
                 final List<Entry> lineEntries = new ArrayList<>();
 
@@ -504,7 +503,7 @@ public class ChartMeasurementView extends LineChart {
         List<ScaleMeasurement> trendlineList = new ArrayList<>();
 
        // exponentially smoothed moving average with 10% smoothing
-        trendlineList.add(measurementList.get(0));
+        trendlineList.add(measurementList.getFirst());
 
         for (int i = 1; i < measurementList.size(); i++) {
             ScaleMeasurement entry = measurementList.get(i).clone();
@@ -527,7 +526,7 @@ public class ChartMeasurementView extends LineChart {
         int samplingWidth = prefs.getInt("simpleMovingAverageNumDays", 7);
 
         // simple moving average of the last samplingWidth days
-        movingAverageList.add(measurementList.get(0));
+        movingAverageList.add(measurementList.getFirst());
 
         for (int i = 1; i < measurementList.size(); i++) {
             ScaleMeasurement entry = measurementList.get(i).clone();
@@ -569,8 +568,7 @@ public class ChartMeasurementView extends LineChart {
     private void addTrendLine(List<ILineDataSet> lineDataSets, TrendlineComputationInterface trendlineComputation) {
 
         for (MeasurementView view : measurementViews) {
-            if (view instanceof FloatMeasurementView && view.isVisible()) {
-                final FloatMeasurementView measurementView = (FloatMeasurementView) view;
+            if (view instanceof FloatMeasurementView measurementView && view.isVisible()) {
 
                 ArrayList<ScaleMeasurement> nonZeroScaleMeasurementList = getNonZeroScaleMeasurementsList(measurementView);
                 // check if we have some data left otherwise skip the measurement

@@ -277,7 +277,7 @@ public class ScaleUser {
     }
 
     public static String getPreferenceKey(int userId, String key) {
-        return String.format("user.%d.%s", userId, key);
+        return "user.%d.%s".formatted(userId, key);
     }
 
     public String getPreferenceKey(String key) {

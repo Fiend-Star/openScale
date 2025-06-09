@@ -382,7 +382,7 @@ public class OpenScale {
             float lastWeight;
 
             if (scaleUserData.size() > 0) {
-                lastWeight = scaleUserData.get(0).getWeight();
+                lastWeight = scaleUserData.getFirst().getWeight();
             } else {
                 lastWeight = scaleUsers.get(i).getInitialWeight();
             }
@@ -474,10 +474,10 @@ public class OpenScale {
 
             reopenDatabase(false);
 
-            getScaleUserList().get(0); // call it to test if the imported database works otherwise a runtime exception is thrown
+            getScaleUserList().getFirst(); // call it to test if the imported database works otherwise a runtime exception is thrown
 
             if (!getScaleUserList().isEmpty()) {
-                selectScaleUser(getScaleUserList().get(0).getId());
+                selectScaleUser(getScaleUserList().getFirst().getId());
             }
         } catch (RuntimeException e) {
             Timber.d("import database corrupted, restore old database");

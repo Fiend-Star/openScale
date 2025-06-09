@@ -5,9 +5,12 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.9.1'
+        classpath 'com.android.tools.build:gradle:8.10.1'
         classpath "androidx.navigation:navigation-safe-args-gradle-plugin:2.8.4"
     }
+}
+ext {
+    sourceCompatibility = JavaVersion.VERSION_17
 }
 
 allprojects {

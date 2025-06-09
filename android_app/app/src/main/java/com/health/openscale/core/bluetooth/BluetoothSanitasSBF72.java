@@ -118,7 +118,7 @@ public class BluetoothSanitasSBF72 extends BluetoothStandardWeightProfile {
     protected void writeActivityLevel() {
         BluetoothBytesParser parser = new BluetoothBytesParser();
         int activityLevel = this.selectedUser.getActivityLevel().toInt() + 1;
-        Timber.d(String.format("activityLevel: %d", activityLevel));
+        Timber.d("activityLevel: %d".formatted(activityLevel));
         parser.setIntValue(activityLevel, FORMAT_UINT8);
         writeBytes(SERVICE_SBF72_CUSTOM, CHARACTERISTIC_ACTIVITY_LEVEL, parser.getValue());
     }
